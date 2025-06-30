@@ -180,6 +180,6 @@ const CampsiteCardSimple: React.FC<CampsiteCardProps> = ({ campsite, onSelect, o
       </AnimatePresence>
     </motion.div>
   );
-};}
+};
 
 export default CampsiteCardSimple;

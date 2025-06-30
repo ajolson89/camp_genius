@@ -61,6 +61,119 @@ interface AvailabilityResponse {
   };
 }
 
+// Helper function to generate mock campsite data when APIs are not available
+function generateMockCampsites(location: string): any[] {
+  const mockCampsites = [
+    {
+      id: 'mock-1',
+      name: `${location} State Park Campground`,
+      location: {
+        address: '123 Park Road',
+        city: location.split(' ')[0] || 'Demo',
+        state: 'CA',
+        coordinates: { lat: 37.7749, lng: -122.4194 }
+      },
+      description: `Beautiful campground in ${location} with stunning views and excellent facilities. Perfect for families and outdoor enthusiasts.`,
+      images: ['https://images.unsplash.com/photo-1519904981063-b0cf448d479e?w=800'],
+      amenities: ['Restrooms', 'Showers', 'Fire Pits', 'Picnic Tables', 'Water'],
+      accessibility: {
+        mobilityAccessible: true,
+        visuallyAccessible: false,
+        hearingAccessible: false,
+        cognitiveAccessible: false,
+        accessibilityRating: 4,
+        accessibilityFeatures: ['ADA Accessible']
+      },
+      availability: {
+        [new Date().toISOString().split('T')[0]]: { tent: 5, rv: 3, cabin: 1 },
+        [new Date(Date.now() + 86400000).toISOString().split('T')[0]]: { tent: 3, rv: 2, cabin: 0 }
+      },
+      pricing: { tent: 25, rv: 40, cabin: 80 },
+      rating: 4.2,
+      reviews: 156,
+      activities: ['Hiking', 'Fishing', 'Swimming'],
+      rules: ['Quiet hours 10 PM - 7 AM', 'Maximum 8 people per site'],
+      aiRecommendation: {
+        score: 85,
+        reason: `Great option for ${location} with excellent facilities and beautiful natural setting.`,
+        tags: ['family-friendly', 'scenic']
+      }
+    },
+    {
+      id: 'mock-2',
+      name: `Lakeside ${location} Retreat`,
+      location: {
+        address: '456 Lake Drive',
+        city: location.split(' ')[0] || 'Demo',
+        state: 'CA',
+        coordinates: { lat: 37.7849, lng: -122.4094 }
+      },
+      description: `Waterfront camping at its finest near ${location}. Perfect for water sports and relaxation.`,
+      images: ['https://images.unsplash.com/photo-1508873699372-7aeab60b44ab?w=800'],
+      amenities: ['Beach Access', 'Boat Launch', 'Fire Pits', 'Restrooms'],
+      accessibility: {
+        mobilityAccessible: false,
+        visuallyAccessible: false,
+        hearingAccessible: false,
+        cognitiveAccessible: false,
+        accessibilityRating: 2,
+        accessibilityFeatures: []
+      },
+      availability: {
+        [new Date().toISOString().split('T')[0]]: { tent: 8, rv: 6, cabin: 2 },
+        [new Date(Date.now() + 86400000).toISOString().split('T')[0]]: { tent: 6, rv: 4, cabin: 1 }
+      },
+      pricing: { tent: 30, rv: 50, cabin: 120 },
+      rating: 4.6,
+      reviews: 243,
+      activities: ['Boating', 'Swimming', 'Fishing', 'Kayaking'],
+      rules: ['No pets allowed', 'Quiet hours 9 PM - 8 AM'],
+      aiRecommendation: {
+        score: 92,
+        reason: `Perfect lakeside location near ${location} with excellent water activities and scenic views.`,
+        tags: ['waterfront', 'scenic', 'water-sports']
+      }
+    },
+    {
+      id: 'mock-3',
+      name: `Mountain View ${location} Campground`,
+      location: {
+        address: '789 Mountain Trail',
+        city: location.split(' ')[0] || 'Demo',
+        state: 'CA',
+        coordinates: { lat: 37.7649, lng: -122.4294 }
+      },
+      description: `Elevated camping experience near ${location} with breathtaking mountain vistas and hiking trails.`,
+      images: ['https://images.unsplash.com/photo-1571863533956-01c88e79957e?w=800'],
+      amenities: ['Hiking Trails', 'Fire Pits', 'Restrooms', 'Picnic Tables'],
+      accessibility: {
+        mobilityAccessible: true,
+        visuallyAccessible: false,
+        hearingAccessible: false,
+        cognitiveAccessible: false,
+        accessibilityRating: 3,
+        accessibilityFeatures: ['Some ADA Accessible sites']
+      },
+      availability: {
+        [new Date().toISOString().split('T')[0]]: { tent: 12, rv: 8, cabin: 3 },
+        [new Date(Date.now() + 86400000).toISOString().split('T')[0]]: { tent: 10, rv: 6, cabin: 2 }
+      },
+      pricing: { tent: 28, rv: 45, cabin: 95 },
+      rating: 4.4,
+      reviews: 189,
+      activities: ['Hiking', 'Mountain Biking', 'Rock Climbing', 'Stargazing'],
+      rules: ['Bear safe food storage required', 'Quiet hours 10 PM - 6 AM'],
+      aiRecommendation: {
+        score: 88,
+        reason: `Excellent mountain camping near ${location} with great hiking opportunities and stunning views.`,
+        tags: ['mountain-views', 'hiking', 'adventure']
+      }
+    }
+  ];
+
+  return mockCampsites;
+}
+
 // Helper function to clean HTML tags and format description
 function cleanAndFormatDescription(htmlDescription: string): string {
   if (!htmlDescription) return 'Beautiful camping facility from Recreation.gov';
@@ -399,16 +512,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Initialize OpenAI
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(500).json({
-        error: 'OpenAI API key not configured'
-      });
-    }
-
-    if (!process.env.RECREATION_GOV_API_KEY) {
-      return res.status(500).json({
-        error: 'Recreation.gov API key not configured'
+    // Check if APIs are configured, fallback to mock data if not
+    const hasOpenAI = !!process.env.OPENAI_API_KEY;
+    const hasRecreationGov = !!process.env.RECREATION_GOV_API_KEY;
+    
+    if (!hasOpenAI || !hasRecreationGov) {
+      console.log('Missing API keys, returning mock data:', { hasOpenAI, hasRecreationGov });
+      return res.json({
+        campsites: generateMockCampsites(location as string),
+        total: 3,
+        message: `Mock results for "${location}" (API keys not configured)`,
+        source: 'mock-data'
       });
     }
 

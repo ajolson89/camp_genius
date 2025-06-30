@@ -39,6 +39,13 @@ async function apiCall(endpoint: string, options: RequestInit = {}) {
 
     const data = await response.json();
     console.log('✅ API Success:', data);
+    console.log('🔍 Data details:', {
+      hasCampsites: !!data.campsites,
+      campsitesLength: data.campsites?.length || 0,
+      total: data.total,
+      message: data.message,
+      error: data.error
+    });
     return data;
   } catch (error) {
     console.error('🚨 API Call Failed:', error);

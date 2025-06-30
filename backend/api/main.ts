@@ -33,7 +33,15 @@ app.get('/health', (req, res) => {
 // Simple campsite search endpoint for testing
 app.get('/campsites', async (req, res) => {
   try {
-    console.log('Campsite search request:', req.query);
+    console.log('=== CAMPSITE SEARCH START ===');
+    console.log('Request method:', req.method);
+    console.log('Request URL:', req.url);
+    console.log('Request query:', req.query);
+    console.log('Environment check:', {
+      hasOpenAI: !!process.env.OPENAI_API_KEY,
+      hasRecGov: !!process.env.RECREATION_GOV_API_KEY,
+      nodeEnv: process.env.NODE_ENV
+    });
     
     // For now, return mock data that matches the frontend format
     // Later we'll integrate with OpenAI and Recreation.gov
@@ -134,5 +142,13 @@ app.use('*', (req, res) => {
 });
 
 export default (req: VercelRequest, res: VercelResponse) => {
-  return app(req, res);
+  try {
+    return app(req, res);
+  } catch (error) {
+    console.error('Vercel handler error:', error);
+    return res.status(500).json({
+      error: 'Server error',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
 };

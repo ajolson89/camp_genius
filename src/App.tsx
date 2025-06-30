@@ -203,6 +203,9 @@ function App() {
         return (
           <SearchResults
             searchQuery={searchQuery}
+            results={filteredCampsites}
+            isLoading={isSearching}
+            error={searchError}
             onBack={() => setCurrentPage('home')}
             onCampsiteSelect={handleCampsiteSelect}
             onBookCampsite={setBookingCampsite}

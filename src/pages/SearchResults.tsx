@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Filter, Grid, List, ArrowLeft } from 'lucide-react';
+import { Filter, Grid, List, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
 import CampsiteCard from '../components/CampsiteCard';
-import { mockCampsites } from '../data/mockData';
 import { Campsite } from '../types';
 
 interface SearchResultsProps {
   searchQuery: string;
+  results: Campsite[];
+  isLoading?: boolean;
+  error?: string | null;
   onBack: () => void;
   onCampsiteSelect: (campsite: Campsite) => void;
   onBookCampsite: (campsite: Campsite) => void;
@@ -14,6 +16,9 @@ interface SearchResultsProps {
 
 const SearchResults: React.FC<SearchResultsProps> = ({ 
   searchQuery, 
+  results,
+  isLoading = false,
+  error = null,
   onBack, 
   onCampsiteSelect, 
   onBookCampsite 
@@ -28,18 +33,8 @@ const SearchResults: React.FC<SearchResultsProps> = ({
     amenities: [] as string[]
   });
 
-  // Filter and sort results based on search query
-  const filteredResults = mockCampsites.filter(campsite => {
-    const queryLower = searchQuery.toLowerCase();
-    return (
-      campsite.name.toLowerCase().includes(queryLower) ||
-      campsite.location.city.toLowerCase().includes(queryLower) ||
-      campsite.location.state.toLowerCase().includes(queryLower) ||
-      campsite.description.toLowerCase().includes(queryLower) ||
-      campsite.amenities.some(amenity => amenity.toLowerCase().includes(queryLower)) ||
-      campsite.activities.some(activity => activity.toLowerCase().includes(queryLower))
-    );
-  });
+  // Use the results passed from the API call
+  const filteredResults = results;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-cream-100 via-orange-50 to-yellow-50 pt-20">
@@ -249,33 +244,62 @@ const SearchResults: React.FC<SearchResultsProps> = ({
               </div>
             </motion.div>
 
+            {/* Loading State */}
+            {isLoading && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center py-16"
+              >
+                <Loader2 className="h-12 w-12 animate-spin text-orange-500 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-charcoal mb-2">Searching for your perfect adventure...</h3>
+                <p className="text-gray-600">Our AI is analyzing thousands of campsites</p>
+              </motion.div>
+            )}
+
+            {/* Error State */}
+            {error && !isLoading && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center py-16"
+              >
+                <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-charcoal mb-2">Connection Issue</h3>
+                <p className="text-gray-600 mb-4">{error}</p>
+                <p className="text-sm text-gray-500">Showing sample results instead.</p>
+              </motion.div>
+            )}
+
             {/* Results Grid/List */}
-            <motion.div
-              layout
-              className={viewMode === 'grid' 
-                ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8' 
-                : 'space-y-6'
-              }
-            >
-              {filteredResults.map((campsite, index) => (
-                <motion.div
-                  key={campsite.id}
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  layout
-                >
-                  <CampsiteCard
-                    campsite={campsite}
-                    onSelect={onCampsiteSelect}
-                    onBook={onBookCampsite}
-                  />
-                </motion.div>
-              ))}
-            </motion.div>
+            {!isLoading && (
+              <motion.div
+                layout
+                className={viewMode === 'grid' 
+                  ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8' 
+                  : 'space-y-6'
+                }
+              >
+                {filteredResults.map((campsite, index) => (
+                  <motion.div
+                    key={campsite.id}
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: index * 0.1 }}
+                    layout
+                  >
+                    <CampsiteCard
+                      campsite={campsite}
+                      onSelect={onCampsiteSelect}
+                      onBook={onBookCampsite}
+                    />
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
 
             {/* No Results */}
-            {filteredResults.length === 0 && (
+            {!isLoading && !error && filteredResults.length === 0 && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}

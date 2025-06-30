@@ -4,6 +4,14 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 // Helper function for API calls
 async function apiCall(endpoint: string, options: RequestInit = {}) {
   const token = localStorage.getItem('authToken');
+  const fullUrl = `${API_BASE_URL}${endpoint}`;
+  
+  console.log('🌐 API Call:', {
+    url: fullUrl,
+    method: options.method || 'GET',
+    hasToken: !!token,
+    API_BASE_URL
+  });
   
   const headers = {
     'Content-Type': 'application/json',
@@ -11,17 +19,31 @@ async function apiCall(endpoint: string, options: RequestInit = {}) {
     ...options.headers,
   };
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  try {
+    const response = await fetch(fullUrl, {
+      ...options,
+      headers,
+    });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Network error' }));
-    throw new Error(error.message || `HTTP error! status: ${response.status}`);
+    console.log('📡 API Response:', {
+      status: response.status,
+      statusText: response.statusText,
+      url: fullUrl
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Network error' }));
+      console.error('❌ API Error:', error);
+      throw new Error(error.message || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('✅ API Success:', data);
+    return data;
+  } catch (error) {
+    console.error('🚨 API Call Failed:', error);
+    throw error;
   }
-
-  return response.json();
 }
 
 // Campsite API

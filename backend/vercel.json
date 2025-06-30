@@ -1,17 +1,13 @@
 {
   "version": 2,
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
-    },
-    {
-      "src": "/webhooks/(.*)",
-      "dest": "/api/webhooks/$1"
+      "source": "/(.*)",
+      "destination": "/api"
     }
   ],
   "functions": {
-    "api/**/*.ts": {
+    "api/index.ts": {
       "maxDuration": 30
     }
   },

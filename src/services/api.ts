@@ -74,12 +74,12 @@ export const campsiteAPI = {
     if (params.petFriendly !== undefined) queryParams.append('petFriendly', params.petFriendly.toString());
     if (params.wheelchairAccessible !== undefined) queryParams.append('wheelchairAccessible', params.wheelchairAccessible.toString());
 
-    return apiCall(`/api/campsites?${queryParams}`);
+    return apiCall(`/campsites?${queryParams}`);
   },
 
   // Get campsite by ID
   getById: async (id: string) => {
-    return apiCall(`/api/campsites/${id}`);
+    return apiCall(`/campsites/${id}`);
   },
 
   // Get nearby campsites
@@ -90,7 +90,7 @@ export const campsiteAPI = {
       radius: (params.radius || 50).toString(),
     });
 
-    return apiCall(`/api/campsites/nearby?${queryParams}`);
+    return apiCall(`/campsites/nearby?${queryParams}`);
   },
 };
 
@@ -98,7 +98,7 @@ export const campsiteAPI = {
 export const aiAPI = {
   // AI-powered search (requires authentication)
   search: async (query: string, filters?: any) => {
-    return apiCall('/api/ai/search', {
+    return apiCall('/ai/search', {
       method: 'POST',
       body: JSON.stringify({
         query,
@@ -110,7 +110,7 @@ export const aiAPI = {
 
   // Chat with AI assistant
   chat: async (message: string, context?: any) => {
-    return apiCall('/api/ai/chat', {
+    return apiCall('/ai/chat', {
       method: 'POST',
       body: JSON.stringify({
         message,
@@ -128,7 +128,7 @@ export const authAPI = {
     password: string;
     fullName: string;
   }) => {
-    return apiCall('/api/auth/register', {
+    return apiCall('/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -136,7 +136,7 @@ export const authAPI = {
 
   // Login
   login: async (email: string, password: string) => {
-    const response = await apiCall('/api/auth/login', {
+    const response = await apiCall('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
@@ -179,7 +179,7 @@ export const bookingAPI = {
     equipmentType: string;
     totalPrice: number;
   }) => {
-    return apiCall('/api/bookings', {
+    return apiCall('/bookings', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -187,12 +187,12 @@ export const bookingAPI = {
 
   // Get user's bookings
   getUserBookings: async () => {
-    return apiCall('/api/bookings');
+    return apiCall('/bookings');
   },
 
   // Cancel booking
   cancel: async (bookingId: string) => {
-    return apiCall(`/api/bookings/${bookingId}/cancel`, {
+    return apiCall(`/bookings/${bookingId}/cancel`, {
       method: 'POST',
     });
   },
@@ -208,7 +208,7 @@ export const tripAPI = {
     participants: number;
     campsites: string[];
   }) => {
-    return apiCall('/api/trips', {
+    return apiCall('/trips', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -216,12 +216,12 @@ export const tripAPI = {
 
   // Get user's trips
   getUserTrips: async () => {
-    return apiCall('/api/trips');
+    return apiCall('/trips');
   },
 
   // Update trip
   update: async (tripId: string, data: any) => {
-    return apiCall(`/api/trips/${tripId}`, {
+    return apiCall(`/trips/${tripId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
@@ -232,7 +232,7 @@ export const tripAPI = {
 export const externalAPI = {
   // Get weather for location
   getWeather: async (lat: number, lng: number) => {
-    return apiCall(`/api/external/weather?lat=${lat}&lng=${lng}`);
+    return apiCall(`/external/weather?lat=${lat}&lng=${lng}`);
   },
 
   // Get directions
@@ -253,6 +253,6 @@ export const externalAPI = {
       );
     }
 
-    return apiCall(`/api/external/directions?${queryParams}`);
+    return apiCall(`/external/directions?${queryParams}`);
   },
 };

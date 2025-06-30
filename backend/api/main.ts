@@ -132,12 +132,13 @@ app.post('/ai/search', async (req, res) => {
   }
 });
 
-// Default route
-app.use('*', (req, res) => {
+// Default route - use app.all instead of app.use with wildcard
+app.all('*', (req, res) => {
   res.status(404).json({
     error: 'Endpoint not found',
     availableEndpoints: ['/health', '/campsites', '/ai/search'],
-    requestedUrl: req.originalUrl
+    requestedUrl: req.originalUrl,
+    requestedPath: req.path
   });
 });
 

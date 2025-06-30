@@ -2,12 +2,19 @@
   "version": 2,
   "rewrites": [
     {
-      "source": "/(.*)",
-      "destination": "/api/main"
+      "source": "/health",
+      "destination": "/api/health"
+    },
+    {
+      "source": "/campsites",
+      "destination": "/api/campsites"
     }
   ],
   "functions": {
-    "api/main.ts": {
+    "api/health.ts": {
+      "maxDuration": 30
+    },
+    "api/campsites.ts": {
       "maxDuration": 30
     }
   },

@@ -184,3 +184,4 @@ Proprietary - CampExplorer
 ## Support
 
 For support, email support@campexplorer.com# Deployment trigger - Mon Jun 30 08:05:57 MDT 2025
+# Deploy hooks enabled - Mon Jun 30 08:11:19 MDT 2025

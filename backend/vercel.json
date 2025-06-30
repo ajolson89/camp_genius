@@ -7,15 +7,15 @@
     },
     {
       "source": "/campsites",
-      "destination": "/api/campsites"
+      "destination": "/api/campsites-real"
     }
   ],
   "functions": {
     "api/health.ts": {
       "maxDuration": 30
     },
-    "api/campsites.ts": {
-      "maxDuration": 30
+    "api/campsites-real.ts": {
+      "maxDuration": 60
     }
   },
   "env": {

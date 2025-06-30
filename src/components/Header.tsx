@@ -72,6 +72,13 @@ const Header: React.FC<HeaderProps> = ({ activeView, onViewChange, currentPage, 
 
           {/* Actions */}
           <div className="flex items-center space-x-3">
+            {/* Built with Bolt Badge */}
+            <img 
+              src="/built_with_bolt.png" 
+              alt="Built with Bolt" 
+              className="h-8 w-auto opacity-90 hover:opacity-100 transition-opacity"
+            />
+            
             {/* Notifications */}
             <div className="relative">
               <motion.button

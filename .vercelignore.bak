@@ -1,0 +1,8 @@
+# Frontend deployment - ignore backend source files but keep API files
+backend/src/
+backend/node_modules/
+backend/package*.json
+backend/tsconfig.json
+backend/README.md
+BACKEND_*.md
+.env*

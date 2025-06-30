@@ -1,0 +1,8 @@
+# Backend deployment - only ignore unnecessary files
+node_modules/
+.env*
+README.md
+.git/
+dist/
+build/
+# Keep api/ folder and all .ts files

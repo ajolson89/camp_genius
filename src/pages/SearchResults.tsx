@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Filter, Grid, List, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
-import CampsiteCard from '../components/CampsiteCard';
+import CampsiteCardSimple from '../components/CampsiteCardSimple';
 import { Campsite } from '../types';
 
 interface SearchResultsProps {
@@ -288,7 +288,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({
                     transition={{ duration: 0.5, delay: index * 0.1 }}
                     layout
                   >
-                    <CampsiteCard
+                    <CampsiteCardSimple
                       campsite={campsite}
                       onSelect={onCampsiteSelect}
                       onBook={onBookCampsite}

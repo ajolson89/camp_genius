@@ -294,14 +294,14 @@ function convertToOurFormat(facility: RecreationGovFacility, campsites: Recreati
       rv: 40,
       cabin: 80
     },
-    rating: 4.0 + Math.random() * 0.8, // Recreation.gov doesn't provide ratings
+    rating: Math.round((4.0 + Math.random() * 0.8) * 10) / 10, // 4.0-4.8 with 1 decimal
     reviews: Math.floor(Math.random() * 200) + 50,
     activities: activities,
     rules: ['Follow Recreation.gov reservation policies', 'Respect nature and wildlife'],
     aiRecommendation: {
-      score: 0.8,
-      reason: 'Real campsite from Recreation.gov database',
-      tags: ['recreation.gov', 'real-campsite', 'verified']
+      score: Math.round((0.75 + Math.random() * 0.2) * 10) / 10, // 0.8-0.9 with 1 decimal
+      reason: facility.FacilityDescription?.substring(0, 120) + '...' || 'Quality campsite from Recreation.gov database',
+      tags: ['recreation.gov', 'verified']
     },
     reservationUrl: facility.FacilityReservationURL,
     phone: facility.FacilityPhone,

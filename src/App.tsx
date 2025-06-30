@@ -18,6 +18,7 @@ import Profile from './pages/Profile';
 import RoutePlanner from './pages/RoutePlanner';
 import { mockCampsites, mockWeatherData } from './data/mockData';
 import { SearchFilters, Campsite, BookingData } from './types';
+import { campsiteAPI, aiAPI, authAPI } from './services/api';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
@@ -44,49 +45,94 @@ function App() {
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
-  const handleAISearch = (query: string) => {
+  const handleAISearch = async (query: string) => {
     setSearchQuery(query);
-    // Simulate AI search processing
-    let filtered = mockCampsites;
+    setIsSearching(true);
+    setSearchError(null);
     
-    const queryLower = query.toLowerCase();
-    
-    // AI-powered search logic
-    if (queryLower.includes('pet') || queryLower.includes('dog')) {
-      filtered = filtered.filter(campsite => 
-        campsite.amenities.some(amenity => amenity.toLowerCase().includes('pet')) ||
-        campsite.name.toLowerCase().includes('pet')
-      );
+    try {
+      // First, try to use AI search if user is authenticated
+      if (authAPI.isAuthenticated()) {
+        try {
+          const aiResults = await aiAPI.search(query, searchFilters);
+          setFilteredCampsites(aiResults.campsites || []);
+          setCurrentPage('search-results');
+          return;
+        } catch (aiError) {
+          console.log('AI search failed, falling back to regular search:', aiError);
+        }
+      }
+      
+      // Fall back to regular search
+      const queryLower = query.toLowerCase();
+      const searchParams: any = {
+        location: searchFilters.location || query,
+      };
+      
+      // Parse natural language for search parameters
+      if (queryLower.includes('pet') || queryLower.includes('dog')) {
+        searchParams.petFriendly = true;
+      }
+      
+      if (queryLower.includes('accessible') || queryLower.includes('wheelchair')) {
+        searchParams.wheelchairAccessible = true;
+      }
+      
+      if (queryLower.includes('rv') || queryLower.includes('motorhome')) {
+        searchParams.equipmentType = 'rv';
+      } else if (queryLower.includes('tent')) {
+        searchParams.equipmentType = 'tent';
+      } else if (queryLower.includes('cabin')) {
+        searchParams.equipmentType = 'cabin';
+      } else if (queryLower.includes('glamping')) {
+        searchParams.equipmentType = 'glamping';
+      }
+      
+      // Add filter parameters
+      if (searchFilters.checkIn) searchParams.checkInDate = searchFilters.checkIn;
+      if (searchFilters.checkOut) searchParams.checkOutDate = searchFilters.checkOut;
+      if (searchFilters.partySize) searchParams.numberOfGuests = searchFilters.partySize;
+      if (searchFilters.priceRange) {
+        searchParams.minPrice = searchFilters.priceRange[0];
+        searchParams.maxPrice = searchFilters.priceRange[1];
+      }
+      if (searchFilters.amenities?.length) searchParams.amenities = searchFilters.amenities;
+      
+      const results = await campsiteAPI.search(searchParams);
+      setFilteredCampsites(results.campsites || results || []);
+      setCurrentPage('search-results');
+      
+    } catch (error) {
+      console.error('Search failed:', error);
+      setSearchError('Search failed. Using sample data instead.');
+      
+      // Fall back to mock data on error
+      let filtered = mockCampsites;
+      const queryLower = query.toLowerCase();
+      
+      if (queryLower.includes('pet') || queryLower.includes('dog')) {
+        filtered = filtered.filter(campsite => 
+          campsite.amenities.some(amenity => amenity.toLowerCase().includes('pet')) ||
+          campsite.name.toLowerCase().includes('pet')
+        );
+      }
+      
+      if (queryLower.includes('rv') || queryLower.includes('motorhome')) {
+        filtered = filtered.filter(campsite => campsite.pricing.rv > 0);
+      }
+      
+      if (queryLower.includes('accessible') || queryLower.includes('wheelchair')) {
+        filtered = filtered.filter(campsite => campsite.accessibility.mobilityAccessible);
+      }
+      
+      setFilteredCampsites(filtered);
+      setCurrentPage('search-results');
+    } finally {
+      setIsSearching(false);
     }
-    
-    if (queryLower.includes('rv') || queryLower.includes('motorhome')) {
-      filtered = filtered.filter(campsite => campsite.pricing.rv > 0);
-    }
-    
-    if (queryLower.includes('accessible') || queryLower.includes('wheelchair')) {
-      filtered = filtered.filter(campsite => campsite.accessibility.mobilityAccessible);
-    }
-    
-    if (queryLower.includes('lake') || queryLower.includes('water')) {
-      filtered = filtered.filter(campsite => 
-        campsite.amenities.some(amenity => amenity.toLowerCase().includes('beach')) ||
-        campsite.name.toLowerCase().includes('lake')
-      );
-    }
-    
-    if (queryLower.includes('mountain') || queryLower.includes('view')) {
-      filtered = filtered.filter(campsite => 
-        campsite.description.toLowerCase().includes('mountain') ||
-        campsite.activities.some(activity => activity.toLowerCase().includes('hiking'))
-      );
-    }
-
-    // Sort by AI recommendation score
-    filtered.sort((a, b) => (b.aiRecommendation?.score || 0) - (a.aiRecommendation?.score || 0));
-    
-    setFilteredCampsites(filtered);
-    setCurrentPage('search-results');
   };
 
   const handleBookingComplete = (booking: BookingData) => {

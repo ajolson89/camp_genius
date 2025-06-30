@@ -61,18 +61,62 @@ interface AvailabilityResponse {
   };
 }
 
+// Helper function to extract location from complex queries
+function extractLocationFromQuery(query: string): string {
+  // Common patterns to remove
+  const removePatterns = [
+    /family getaway near /i,
+    /camping near /i,
+    /campsite near /i,
+    /campsites near /i,
+    /near /i,
+    /in /i,
+    /at /i,
+    /around /i,
+    /close to /i,
+    /this weekend/i,
+    /next weekend/i,
+    /tomorrow/i,
+    /tonight/i,
+    /for \d+ nights?/i,
+    /\d+ people/i,
+    /\d+ guests?/i,
+  ];
+  
+  let cleanedQuery = query;
+  removePatterns.forEach(pattern => {
+    cleanedQuery = cleanedQuery.replace(pattern, ' ');
+  });
+  
+  // Clean up extra spaces
+  cleanedQuery = cleanedQuery.replace(/\s+/g, ' ').trim();
+  
+  return cleanedQuery;
+}
+
 // Helper function to generate realistic coordinates based on location
 function getLocationCoordinates(location: string): { lat: number; lng: number; state: string } {
   const locationMap: { [key: string]: { lat: number; lng: number; state: string } } = {
     'california': { lat: 36.7783, lng: -119.4179, state: 'CA' },
+    'ca': { lat: 36.7783, lng: -119.4179, state: 'CA' },
     'colorado': { lat: 39.5501, lng: -105.7821, state: 'CO' },
+    'co': { lat: 39.5501, lng: -105.7821, state: 'CO' },
     'utah': { lat: 39.3210, lng: -111.0937, state: 'UT' },
+    'ut': { lat: 39.3210, lng: -111.0937, state: 'UT' },
     'arizona': { lat: 34.0489, lng: -111.0937, state: 'AZ' },
+    'az': { lat: 34.0489, lng: -111.0937, state: 'AZ' },
     'nevada': { lat: 38.8026, lng: -116.4194, state: 'NV' },
+    'nv': { lat: 38.8026, lng: -116.4194, state: 'NV' },
     'oregon': { lat: 43.8041, lng: -120.5542, state: 'OR' },
+    'or': { lat: 43.8041, lng: -120.5542, state: 'OR' },
     'washington': { lat: 47.7511, lng: -120.7401, state: 'WA' },
+    'wa': { lat: 47.7511, lng: -120.7401, state: 'WA' },
     'texas': { lat: 31.9686, lng: -99.9018, state: 'TX' },
+    'tx': { lat: 31.9686, lng: -99.9018, state: 'TX' },
     'florida': { lat: 27.7663, lng: -81.6868, state: 'FL' },
+    'fl': { lat: 27.7663, lng: -81.6868, state: 'FL' },
+    'wyoming': { lat: 44.2619, lng: -107.3024, state: 'WY' },
+    'wy': { lat: 44.2619, lng: -107.3024, state: 'WY' },
     'yosemite': { lat: 37.8651, lng: -119.5383, state: 'CA' },
     'yellowstone': { lat: 44.4280, lng: -110.5885, state: 'WY' },
     'grand canyon': { lat: 36.1069, lng: -112.1129, state: 'AZ' },
@@ -84,9 +128,12 @@ function getLocationCoordinates(location: string): { lat: number; lng: number; s
     'los angeles': { lat: 34.0522, lng: -118.2437, state: 'CA' },
     'phoenix': { lat: 33.4484, lng: -112.0740, state: 'AZ' },
     'austin': { lat: 30.2672, lng: -97.7431, state: 'TX' },
+    'miami': { lat: 25.7617, lng: -80.1918, state: 'FL' },
   };
 
-  const key = location.toLowerCase();
+  // Clean the location query first
+  const cleanedLocation = extractLocationFromQuery(location);
+  const key = cleanedLocation.toLowerCase();
   
   // Try to find exact match first
   if (locationMap[key]) {
@@ -124,9 +171,10 @@ function generateAvailability(hasTent: boolean, hasRV: boolean, hasCabin: boolea
 }
 
 // Helper function to generate mock campsite data when APIs are not available
-function generateMockCampsites(location: string): any[] {
+function generateMockCampsites(location: string, maxPrice: number = 999): any[] {
   const coords = getLocationCoordinates(location);
-  const cityName = location.split(' ')[0] || 'Demo';
+  const cleanedLocation = extractLocationFromQuery(location);
+  const cityName = cleanedLocation.split(' ')[0] || 'Denver';
   
   const mockCampsites = [
     {
@@ -566,29 +614,54 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     console.log('=== REAL CAMPSITE SEARCH START ===');
+    console.log('Request method:', req.method);
     console.log('Request query:', req.query);
+    console.log('Request body:', req.body);
+    console.log('Request url:', req.url);
     
-    const { location = '' } = req.query;
+    const { location = '', maxPrice = '', numberOfGuests = '' } = req.query;
     
     if (!location) {
       return res.status(400).json({
         error: 'Location parameter is required',
-        message: 'Please provide a location to search for campsites'
+        message: 'Please provide a location to search for campsites',
+        receivedQuery: req.query
       });
     }
+    
+    const maxPriceNum = maxPrice ? parseInt(maxPrice as string) : 999;
+    const guestsNum = numberOfGuests ? parseInt(numberOfGuests as string) : 2;
 
     // Check if APIs are configured, fallback to mock data if not
     const hasOpenAI = !!process.env.OPENAI_API_KEY;
     const hasRecreationGov = !!process.env.RECREATION_GOV_API_KEY;
     
     if (!hasOpenAI || !hasRecreationGov) {
-      console.log('Missing API keys, returning mock data:', { hasOpenAI, hasRecreationGov });
-      const mockCampsites = generateMockCampsites(location as string);
+      console.log('Missing API keys, returning mock data:', { 
+        hasOpenAI, 
+        hasRecreationGov,
+        originalLocation: location,
+        cleanedLocation: extractLocationFromQuery(location as string),
+        coordinates: getLocationCoordinates(location as string)
+      });
+      const mockCampsites = generateMockCampsites(location as string, maxPriceNum);
+      
+      // Filter by price if specified
+      const filteredCampsites = mockCampsites.filter(campsite => {
+        const lowestPrice = Math.min(
+          campsite.pricing.tent || 999,
+          campsite.pricing.rv || 999,
+          campsite.pricing.cabin || 999
+        );
+        return lowestPrice <= maxPriceNum;
+      });
+      
       return res.json({
-        campsites: mockCampsites,
-        total: mockCampsites.length,
+        campsites: filteredCampsites,
+        total: filteredCampsites.length,
         message: `Mock results for "${location}" (API keys not configured)`,
-        source: 'mock-data'
+        source: 'mock-data',
+        filters: { maxPrice: maxPriceNum, guests: guestsNum }
       });
     }
 

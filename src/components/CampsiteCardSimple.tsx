@@ -115,11 +115,12 @@ const CampsiteCardSimple: React.FC<CampsiteCardProps> = ({ campsite, onSelect, o
 
         {/* Pricing - Simple */}
         <div className="flex items-center justify-between mb-4">
-          <div className="flex space-x-3 text-sm text-gray-600">
-            <span>⛺ ${campsite.pricing.tent}</span>
-            <span>🚐 ${campsite.pricing.rv}</span>
-            {campsite.pricing.cabin > 0 && <span>🏠 ${campsite.pricing.cabin}</span>}
+          <div className="flex flex-wrap gap-2 text-sm text-gray-600">
+            {campsite.pricing.tent > 0 && <span className="bg-green-100 px-2 py-1 rounded">⛺ ${campsite.pricing.tent}</span>}
+            {campsite.pricing.rv > 0 && <span className="bg-blue-100 px-2 py-1 rounded">🚐 ${campsite.pricing.rv}</span>}
+            {campsite.pricing.cabin > 0 && <span className="bg-orange-100 px-2 py-1 rounded">🏠 ${campsite.pricing.cabin}</span>}
           </div>
+          <span className="text-xs text-gray-500">per night</span>
         </div>
 
         {/* Calendar Toggle Button */}

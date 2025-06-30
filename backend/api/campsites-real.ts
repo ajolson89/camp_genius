@@ -61,21 +61,89 @@ interface AvailabilityResponse {
   };
 }
 
+// Helper function to generate realistic coordinates based on location
+function getLocationCoordinates(location: string): { lat: number; lng: number; state: string } {
+  const locationMap: { [key: string]: { lat: number; lng: number; state: string } } = {
+    'california': { lat: 36.7783, lng: -119.4179, state: 'CA' },
+    'colorado': { lat: 39.5501, lng: -105.7821, state: 'CO' },
+    'utah': { lat: 39.3210, lng: -111.0937, state: 'UT' },
+    'arizona': { lat: 34.0489, lng: -111.0937, state: 'AZ' },
+    'nevada': { lat: 38.8026, lng: -116.4194, state: 'NV' },
+    'oregon': { lat: 43.8041, lng: -120.5542, state: 'OR' },
+    'washington': { lat: 47.7511, lng: -120.7401, state: 'WA' },
+    'texas': { lat: 31.9686, lng: -99.9018, state: 'TX' },
+    'florida': { lat: 27.7663, lng: -81.6868, state: 'FL' },
+    'yosemite': { lat: 37.8651, lng: -119.5383, state: 'CA' },
+    'yellowstone': { lat: 44.4280, lng: -110.5885, state: 'WY' },
+    'grand canyon': { lat: 36.1069, lng: -112.1129, state: 'AZ' },
+    'zion': { lat: 37.2982, lng: -113.0263, state: 'UT' },
+    'denver': { lat: 39.7392, lng: -104.9903, state: 'CO' },
+    'seattle': { lat: 47.6062, lng: -122.3321, state: 'WA' },
+    'portland': { lat: 45.5152, lng: -122.6784, state: 'OR' },
+    'san francisco': { lat: 37.7749, lng: -122.4194, state: 'CA' },
+    'los angeles': { lat: 34.0522, lng: -118.2437, state: 'CA' },
+    'phoenix': { lat: 33.4484, lng: -112.0740, state: 'AZ' },
+    'austin': { lat: 30.2672, lng: -97.7431, state: 'TX' },
+  };
+
+  const key = location.toLowerCase();
+  
+  // Try to find exact match first
+  if (locationMap[key]) {
+    return locationMap[key];
+  }
+  
+  // Try to find partial match
+  for (const [mapKey, coords] of Object.entries(locationMap)) {
+    if (key.includes(mapKey) || mapKey.includes(key)) {
+      return coords;
+    }
+  }
+  
+  // Default to Colorado if no match
+  return { lat: 39.5501, lng: -105.7821, state: 'CO' };
+}
+
+// Helper function to generate availability for next 14 days
+function generateAvailability(hasTent: boolean, hasRV: boolean, hasCabin: boolean): { [date: string]: { tent: number; rv: number; cabin: number } } {
+  const availability: { [date: string]: { tent: number; rv: number; cabin: number } } = {};
+  
+  for (let i = 0; i < 14; i++) {
+    const date = new Date();
+    date.setDate(date.getDate() + i);
+    const dateStr = date.toISOString().split('T')[0];
+    
+    availability[dateStr] = {
+      tent: hasTent ? Math.floor(Math.random() * 15) + 3 : 0, // 3-17 tent sites
+      rv: hasRV ? Math.floor(Math.random() * 10) + 2 : 0,     // 2-11 RV sites  
+      cabin: hasCabin ? Math.floor(Math.random() * 4) + 1 : 0 // 1-4 cabins
+    };
+  }
+  
+  return availability;
+}
+
 // Helper function to generate mock campsite data when APIs are not available
 function generateMockCampsites(location: string): any[] {
+  const coords = getLocationCoordinates(location);
+  const cityName = location.split(' ')[0] || 'Demo';
+  
   const mockCampsites = [
     {
       id: 'mock-1',
-      name: `${location} State Park Campground`,
+      name: `${cityName} State Park Campground`,
       location: {
         address: '123 Park Road',
-        city: location.split(' ')[0] || 'Demo',
-        state: 'CA',
-        coordinates: { lat: 37.7749, lng: -122.4194 }
+        city: cityName,
+        state: coords.state,
+        coordinates: { 
+          lat: coords.lat + (Math.random() - 0.5) * 0.1, // Add some variation
+          lng: coords.lng + (Math.random() - 0.5) * 0.1 
+        }
       },
-      description: `Beautiful campground in ${location} with stunning views and excellent facilities. Perfect for families and outdoor enthusiasts.`,
+      description: `Beautiful state park campground in ${location} with stunning views and excellent facilities. Features tent and RV sites with full hookups. Perfect for families and outdoor enthusiasts seeking a classic camping experience.`,
       images: ['https://images.unsplash.com/photo-1519904981063-b0cf448d479e?w=800'],
-      amenities: ['Restrooms', 'Showers', 'Fire Pits', 'Picnic Tables', 'Water'],
+      amenities: ['Restrooms', 'Showers', 'Fire Pits', 'Picnic Tables', 'Water Hookups', 'Electrical Hookups'],
       accessibility: {
         mobilityAccessible: true,
         visuallyAccessible: false,
@@ -84,33 +152,33 @@ function generateMockCampsites(location: string): any[] {
         accessibilityRating: 4,
         accessibilityFeatures: ['ADA Accessible']
       },
-      availability: {
-        [new Date().toISOString().split('T')[0]]: { tent: 5, rv: 3, cabin: 1 },
-        [new Date(Date.now() + 86400000).toISOString().split('T')[0]]: { tent: 3, rv: 2, cabin: 0 }
-      },
-      pricing: { tent: 25, rv: 40, cabin: 80 },
+      availability: generateAvailability(true, true, false), // Tent and RV, no cabins
+      pricing: { tent: 25, rv: 40, cabin: 0 }, // No cabin pricing since no cabins
       rating: 4.2,
       reviews: 156,
       activities: ['Hiking', 'Fishing', 'Swimming'],
       rules: ['Quiet hours 10 PM - 7 AM', 'Maximum 8 people per site'],
       aiRecommendation: {
         score: 85,
-        reason: `Great option for ${location} with excellent facilities and beautiful natural setting.`,
-        tags: ['family-friendly', 'scenic']
+        reason: `Great option for ${location} with excellent facilities and beautiful natural setting. Features both tent and RV sites with full amenities.`,
+        tags: ['family-friendly', 'scenic', 'full-hookups']
       }
     },
     {
       id: 'mock-2',
-      name: `Lakeside ${location} Retreat`,
+      name: `Lakeside ${cityName} Resort`,
       location: {
         address: '456 Lake Drive',
-        city: location.split(' ')[0] || 'Demo',
-        state: 'CA',
-        coordinates: { lat: 37.7849, lng: -122.4094 }
+        city: cityName,
+        state: coords.state,
+        coordinates: { 
+          lat: coords.lat + (Math.random() - 0.5) * 0.15, 
+          lng: coords.lng + (Math.random() - 0.5) * 0.15 
+        }
       },
-      description: `Waterfront camping at its finest near ${location}. Perfect for water sports and relaxation.`,
+      description: `Waterfront camping resort near ${location}. Features luxury cabins and premium RV sites with lake access. Perfect for water sports and relaxation with upscale amenities and stunning lake views.`,
       images: ['https://images.unsplash.com/photo-1508873699372-7aeab60b44ab?w=800'],
-      amenities: ['Beach Access', 'Boat Launch', 'Fire Pits', 'Restrooms'],
+      amenities: ['Beach Access', 'Boat Launch', 'Fire Pits', 'Restrooms', 'Showers', 'Marina', 'Kayak Rentals'],
       accessibility: {
         mobilityAccessible: false,
         visuallyAccessible: false,
@@ -119,54 +187,51 @@ function generateMockCampsites(location: string): any[] {
         accessibilityRating: 2,
         accessibilityFeatures: []
       },
-      availability: {
-        [new Date().toISOString().split('T')[0]]: { tent: 8, rv: 6, cabin: 2 },
-        [new Date(Date.now() + 86400000).toISOString().split('T')[0]]: { tent: 6, rv: 4, cabin: 1 }
-      },
-      pricing: { tent: 30, rv: 50, cabin: 120 },
+      availability: generateAvailability(false, true, true), // RV and cabins, no tents
+      pricing: { tent: 0, rv: 65, cabin: 150 }, // No tent sites at this upscale resort
       rating: 4.6,
       reviews: 243,
-      activities: ['Boating', 'Swimming', 'Fishing', 'Kayaking'],
-      rules: ['No pets allowed', 'Quiet hours 9 PM - 8 AM'],
+      activities: ['Boating', 'Swimming', 'Fishing', 'Kayaking', 'Water Skiing'],
+      rules: ['No pets allowed', 'Quiet hours 9 PM - 8 AM', 'Minimum 2-night stay for cabins'],
       aiRecommendation: {
         score: 92,
-        reason: `Perfect lakeside location near ${location} with excellent water activities and scenic views.`,
-        tags: ['waterfront', 'scenic', 'water-sports']
+        reason: `Perfect lakeside resort near ${location} with excellent water activities and luxury accommodations. Features premium RV sites and beautiful cabins.`,
+        tags: ['waterfront', 'luxury', 'water-sports', 'cabins']
       }
     },
     {
       id: 'mock-3',
-      name: `Mountain View ${location} Campground`,
+      name: `Mountain View ${cityName} Wilderness`,
       location: {
         address: '789 Mountain Trail',
-        city: location.split(' ')[0] || 'Demo',
-        state: 'CA',
-        coordinates: { lat: 37.7649, lng: -122.4294 }
+        city: cityName,
+        state: coords.state,
+        coordinates: { 
+          lat: coords.lat + (Math.random() - 0.5) * 0.12, 
+          lng: coords.lng + (Math.random() - 0.5) * 0.12 
+        }
       },
-      description: `Elevated camping experience near ${location} with breathtaking mountain vistas and hiking trails.`,
+      description: `Primitive wilderness camping near ${location} with breathtaking mountain vistas and hiking trails. Tent-only sites for the authentic outdoor experience. Perfect for backpackers and nature enthusiasts seeking solitude.`,
       images: ['https://images.unsplash.com/photo-1571863533956-01c88e79957e?w=800'],
-      amenities: ['Hiking Trails', 'Fire Pits', 'Restrooms', 'Picnic Tables'],
+      amenities: ['Hiking Trails', 'Fire Pits', 'Pit Toilets', 'Picnic Tables', 'Bear Boxes'],
       accessibility: {
-        mobilityAccessible: true,
+        mobilityAccessible: false,
         visuallyAccessible: false,
         hearingAccessible: false,
         cognitiveAccessible: false,
-        accessibilityRating: 3,
-        accessibilityFeatures: ['Some ADA Accessible sites']
+        accessibilityRating: 1,
+        accessibilityFeatures: []
       },
-      availability: {
-        [new Date().toISOString().split('T')[0]]: { tent: 12, rv: 8, cabin: 3 },
-        [new Date(Date.now() + 86400000).toISOString().split('T')[0]]: { tent: 10, rv: 6, cabin: 2 }
-      },
-      pricing: { tent: 28, rv: 45, cabin: 95 },
+      availability: generateAvailability(true, false, false), // Tent only
+      pricing: { tent: 15, rv: 0, cabin: 0 }, // Tent-only primitive camping
       rating: 4.4,
       reviews: 189,
-      activities: ['Hiking', 'Mountain Biking', 'Rock Climbing', 'Stargazing'],
-      rules: ['Bear safe food storage required', 'Quiet hours 10 PM - 6 AM'],
+      activities: ['Hiking', 'Mountain Biking', 'Rock Climbing', 'Stargazing', 'Wildlife Watching'],
+      rules: ['Bear safe food storage required', 'Quiet hours 10 PM - 6 AM', 'Pack out all trash', 'Tent camping only'],
       aiRecommendation: {
         score: 88,
-        reason: `Excellent mountain camping near ${location} with great hiking opportunities and stunning views.`,
-        tags: ['mountain-views', 'hiking', 'adventure']
+        reason: `Excellent primitive camping near ${location} with great hiking opportunities and stunning mountain views. Perfect for those seeking a true wilderness experience.`,
+        tags: ['wilderness', 'hiking', 'primitive', 'mountain-views']
       }
     }
   ];
@@ -518,9 +583,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     if (!hasOpenAI || !hasRecreationGov) {
       console.log('Missing API keys, returning mock data:', { hasOpenAI, hasRecreationGov });
+      const mockCampsites = generateMockCampsites(location as string);
       return res.json({
-        campsites: generateMockCampsites(location as string),
-        total: 3,
+        campsites: mockCampsites,
+        total: mockCampsites.length,
         message: `Mock results for "${location}" (API keys not configured)`,
         source: 'mock-data'
       });

@@ -618,14 +618,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log('Request query:', req.query);
     console.log('Request body:', req.body);
     console.log('Request url:', req.url);
+    console.log('Query keys:', Object.keys(req.query || {}));
+    console.log('Location value:', req.query?.location);
     
     const { location = '', maxPrice = '', numberOfGuests = '' } = req.query;
+    
+    console.log('Extracted values:', { location, maxPrice, numberOfGuests });
     
     if (!location) {
       return res.status(400).json({
         error: 'Location parameter is required',
         message: 'Please provide a location to search for campsites',
-        receivedQuery: req.query
+        receivedQuery: req.query,
+        queryKeys: Object.keys(req.query || {})
       });
     }
     
@@ -644,25 +649,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         cleanedLocation: extractLocationFromQuery(location as string),
         coordinates: getLocationCoordinates(location as string)
       });
+      console.log('Generating mock campsites...');
       const mockCampsites = generateMockCampsites(location as string, maxPriceNum);
+      console.log('Generated mock campsites:', mockCampsites.length);
       
       // Filter by price if specified
       const filteredCampsites = mockCampsites.filter(campsite => {
-        const lowestPrice = Math.min(
-          campsite.pricing.tent || 999,
-          campsite.pricing.rv || 999,
-          campsite.pricing.cabin || 999
-        );
+        // Only consider prices > 0 for the minimum calculation
+        const prices = [];
+        if (campsite.pricing.tent > 0) prices.push(campsite.pricing.tent);
+        if (campsite.pricing.rv > 0) prices.push(campsite.pricing.rv);
+        if (campsite.pricing.cabin > 0) prices.push(campsite.pricing.cabin);
+        
+        const lowestPrice = prices.length > 0 ? Math.min(...prices) : 999;
+        console.log(`Campsite ${campsite.name} - prices: ${JSON.stringify(campsite.pricing)}, lowest: ${lowestPrice}, max allowed: ${maxPriceNum}`);
         return lowestPrice <= maxPriceNum;
       });
       
-      return res.json({
+      console.log('Filtered campsites:', filteredCampsites.length);
+      
+      const response = {
         campsites: filteredCampsites,
         total: filteredCampsites.length,
         message: `Mock results for "${location}" (API keys not configured)`,
         source: 'mock-data',
         filters: { maxPrice: maxPriceNum, guests: guestsNum }
-      });
+      };
+      
+      console.log('Sending response:', response);
+      return res.json(response);
     }
 
     const openai = new OpenAI({
@@ -731,10 +746,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   } catch (error) {
     console.error('Real campsite search error:', error);
-    res.status(500).json({
-      error: 'Failed to search real campsites',
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
-    });
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
+    
+    // Return mock data even on error
+    try {
+      const location = req.query?.location || 'Denver';
+      const mockCampsites = generateMockCampsites(location as string, 200);
+      return res.json({
+        campsites: mockCampsites,
+        total: mockCampsites.length,
+        message: `Fallback mock results for "${location}" due to error`,
+        source: 'mock-data-fallback',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    } catch (fallbackError) {
+      return res.status(500).json({
+        error: 'Failed to search campsites and generate fallback',
+        message: error instanceof Error ? error.message : 'Unknown error',
+        fallbackError: fallbackError instanceof Error ? fallbackError.message : 'Unknown fallback error'
+      });
+    }
   }
 }

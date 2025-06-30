@@ -61,6 +61,26 @@ interface AvailabilityResponse {
   };
 }
 
+// Helper function to clean HTML tags and format description
+function cleanAndFormatDescription(htmlDescription: string): string {
+  if (!htmlDescription) return 'Beautiful camping facility from Recreation.gov';
+  
+  // Replace HTML tags with appropriate formatting
+  let cleaned = htmlDescription
+    .replace(/<h2[^>]*>/g, '\n\n**')
+    .replace(/<\/h2>/g, '**\n')
+    .replace(/<h3[^>]*>/g, '\n\n*')
+    .replace(/<\/h3>/g, '*\n')
+    .replace(/<p[^>]*>/g, '\n')
+    .replace(/<\/p>/g, '\n')
+    .replace(/<br\s*\/?>/g, '\n')
+    .replace(/<[^>]+>/g, '') // Remove any remaining HTML tags
+    .replace(/\n\s*\n\s*\n/g, '\n\n') // Clean up multiple newlines
+    .trim();
+  
+  return cleaned || 'Beautiful camping facility from Recreation.gov';
+}
+
 // Helper function to use OpenAI to parse user query into search parameters
 async function parseUserQuery(query: string, openai: OpenAI) {
   try {
@@ -78,13 +98,18 @@ Extract and return a JSON object with these fields:
   "petFriendly": true/false,
   "equipmentType": "tent" | "rv" | "cabin" | null,
   "searchRadius": 50,
-  "priority": "what matters most to this user"
+  "priority": "what matters most to this user",
+  "startDate": "YYYY-MM-DD format if dates mentioned, null if none",
+  "endDate": "YYYY-MM-DD format if dates mentioned, null if none",
+  "nights": "number of nights if mentioned, 1 if not specified"
 }
 
 Examples:
 "Pet friendly camping near Yosemite" → {"location": "Yosemite", "stateCode": "CA", "keywords": ["pet", "friendly", "yosemite"], "petFriendly": true}
 "RV camping in Colorado mountains" → {"location": "Colorado", "stateCode": "CO", "keywords": ["rv", "mountains"], "equipmentType": "rv"}
 "Accessible camping near beaches" → {"location": "coastal", "keywords": ["beach", "accessible"], "accessibilityNeeds": true}
+"Camping this weekend in Utah" → {"location": "Utah", "stateCode": "UT", "startDate": "2025-07-05", "endDate": "2025-07-06", "nights": 2}
+"Need a tent site for tonight" → {"equipmentType": "tent", "startDate": "2025-06-30", "nights": 1}
 
 Return only the JSON object.`;
 
@@ -192,14 +217,59 @@ async function getFacilityCampsites(facilityId: string) {
   }
 }
 
-// Helper function to get availability for next 14 days
-async function getAvailability(facilityId: string) {
+// Helper function to get real pricing data from campsite attributes
+function extractPricingFromCampsites(campsites: RecreationGovCampsite[]): { tent: number; rv: number; cabin: number } {
+  let tentPrice = 25; // Default fallback
+  let rvPrice = 40;
+  let cabinPrice = 80;
+  
+  campsites.forEach(campsite => {
+    if (campsite.ATTRIBUTES) {
+      campsite.ATTRIBUTES.forEach(attr => {
+        if (attr.AttributeName?.toLowerCase().includes('fee') || 
+            attr.AttributeName?.toLowerCase().includes('price') ||
+            attr.AttributeName?.toLowerCase().includes('cost')) {
+          const price = parseInt(attr.AttributeValue?.replace(/[^0-9]/g, '') || '0');
+          if (price > 0 && price < 200) { // Reasonable camping fee range
+            if (campsite.CampsiteType?.toLowerCase().includes('tent')) {
+              tentPrice = Math.max(price, tentPrice);
+            } else if (campsite.CampsiteType?.toLowerCase().includes('rv')) {
+              rvPrice = Math.max(price, rvPrice);
+            } else if (campsite.CampsiteType?.toLowerCase().includes('cabin')) {
+              cabinPrice = Math.max(price, cabinPrice);
+            }
+          }
+        }
+      });
+    }
+  });
+  
+  return { tent: tentPrice, rv: rvPrice, cabin: cabinPrice };
+}
+
+// Helper function to get availability for specified date range
+async function getAvailability(facilityId: string, searchParams?: any) {
   const apiKey = process.env.RECREATION_GOV_API_KEY;
   
   try {
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setDate(startDate.getDate() + 14);
+    let startDate = new Date();
+    let endDate = new Date();
+    
+    // Use dates from search params if provided, otherwise default to next 14 days
+    if (searchParams?.startDate) {
+      startDate = new Date(searchParams.startDate);
+    }
+    
+    if (searchParams?.endDate) {
+      endDate = new Date(searchParams.endDate);
+    } else if (searchParams?.nights) {
+      endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + parseInt(searchParams.nights));
+    } else {
+      // Default to 14 days from start date
+      endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 14);
+    }
 
     const startStr = startDate.toISOString().split('T')[0];
     const endStr = endDate.toISOString().split('T')[0];
@@ -229,6 +299,7 @@ function convertToOurFormat(facility: RecreationGovFacility, campsites: Recreati
   const address = facility.FACILITYADDRESS?.[0];
   const images = facility.MEDIA?.filter(m => m.MediaType === 'Image').map(m => m.URL) || [];
   const activities = facility.ACTIVITY?.map(a => a.ActivityName) || [];
+  const realPricing = extractPricingFromCampsites(campsites);
 
   // Calculate availability summary
   const availabilitySummary: any = {};
@@ -277,7 +348,7 @@ function convertToOurFormat(facility: RecreationGovFacility, campsites: Recreati
         lng: facility.FacilityLongitude || 0
       }
     },
-    description: facility.FacilityDescription || 'Beautiful camping facility from Recreation.gov',
+    description: cleanAndFormatDescription(facility.FacilityDescription),
     images: images.slice(0, 5), // Limit to 5 images
     amenities: activities.slice(0, 10), // Use activities as amenities
     accessibility: {
@@ -289,18 +360,14 @@ function convertToOurFormat(facility: RecreationGovFacility, campsites: Recreati
       accessibilityFeatures: facility.FacilityAdaAccess === 'Y' ? ['ADA Accessible'] : []
     },
     availability: availabilitySummary,
-    pricing: {
-      tent: 25, // Recreation.gov doesn't always provide pricing
-      rv: 40,
-      cabin: 80
-    },
+    pricing: realPricing,
     rating: Math.round((4.0 + Math.random() * 0.8) * 10) / 10, // 4.0-4.8 with 1 decimal
     reviews: Math.floor(Math.random() * 200) + 50,
     activities: activities,
     rules: ['Follow Recreation.gov reservation policies', 'Respect nature and wildlife'],
     aiRecommendation: {
-      score: Math.round((0.75 + Math.random() * 0.2) * 10) / 10, // 0.8-0.9 with 1 decimal
-      reason: facility.FacilityDescription?.substring(0, 120) + '...' || 'Quality campsite from Recreation.gov database',
+      score: Math.round((75 + Math.random() * 20)), // 75-95 out of 100
+      reason: cleanAndFormatDescription(facility.FacilityDescription).substring(0, 150) + '...' || 'Quality campsite from Recreation.gov database',
       tags: ['recreation.gov', 'verified']
     },
     reservationUrl: facility.FacilityReservationURL,
@@ -386,7 +453,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Get campsites and availability in parallel
         const [campsites, availability] = await Promise.all([
           getFacilityCampsites(facility.FacilityID),
-          getAvailability(facility.FacilityID)
+          getAvailability(facility.FacilityID, searchParams)
         ]);
 
         if (campsites.length > 0) {

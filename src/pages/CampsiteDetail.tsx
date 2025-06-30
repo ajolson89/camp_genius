@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Star, MapPin, Calendar, Users, Tent, Truck, Home, Heart, Share, Accessibility, Cloud, Thermometer, Wind, Droplets } from 'lucide-react';
 import { Campsite } from '../types';
+import CampsiteMap from '../components/CampsiteMap';
+import AvailabilityCalendar from '../components/AvailabilityCalendar';
 
 interface CampsiteDetailProps {
   campsite: Campsite;
@@ -12,7 +14,17 @@ interface CampsiteDetailProps {
 const CampsiteDetail: React.FC<CampsiteDetailProps> = ({ campsite, onBack, onBook }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [selectedDate, setSelectedDate] = useState('2025-01-15');
+  const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [isSaved, setIsSaved] = useState(false);
+  const [activeTab, setActiveTab] = useState<'overview' | 'map' | 'availability' | 'reviews'>('overview');
+
+  const handleDateSelect = (date: string) => {
+    if (selectedDates.includes(date)) {
+      setSelectedDates(selectedDates.filter(d => d !== date));
+    } else {
+      setSelectedDates([...selectedDates, date]);
+    }
+  };
 
   const mockWeather = {
     current: { temp: 72, condition: 'Sunny', icon: '☀️' },
@@ -226,7 +238,37 @@ const CampsiteDetail: React.FC<CampsiteDetailProps> = ({ campsite, onBack, onBoo
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Tab Navigation */}
+        <div className="mb-8">
+          <div className="flex space-x-1 bg-gray-100 p-1 rounded-xl max-w-md mx-auto">
+            {[
+              { key: 'overview', label: 'Overview', icon: '🏕️' },
+              { key: 'map', label: 'Location', icon: '🗺️' },
+              { key: 'availability', label: 'Calendar', icon: '📅' },
+              { key: 'reviews', label: 'Reviews', icon: '⭐' }
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key as any)}
+                className={`
+                  flex-1 flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200
+                  ${activeTab === tab.key 
+                    ? 'bg-white text-orange-600 shadow-sm' 
+                    : 'text-gray-600 hover:text-orange-600'
+                  }
+                `}
+              >
+                <span>{tab.icon}</span>
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Tab Content */}
+        <div className="min-h-[400px]">
+          {activeTab === 'overview' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column */}
           <div className="lg:col-span-2 space-y-8">
             {/* Amenities & Activities */}
@@ -487,6 +529,93 @@ const CampsiteDetail: React.FC<CampsiteDetailProps> = ({ campsite, onBack, onBoo
               </div>
             </div>
           </div>
+            </div>
+          )}
+
+          {activeTab === 'map' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="h-[600px]"
+            >
+              <CampsiteMap
+                campsites={[campsite]}
+                selectedCampsite={campsite}
+                height="600px"
+                showFullscreenToggle={true}
+              />
+            </motion.div>
+          )}
+
+          {activeTab === 'availability' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="max-w-4xl mx-auto"
+            >
+              <AvailabilityCalendar
+                availability={campsite.availability || {}}
+                onDateSelect={handleDateSelect}
+                selectedDates={selectedDates}
+              />
+              {selectedDates.length > 0 && (
+                <div className="mt-6 p-4 bg-green-50 rounded-xl border border-green-200">
+                  <h4 className="font-semibold text-green-800 mb-2">
+                    Selected Dates ({selectedDates.length} night{selectedDates.length !== 1 ? 's' : ''})
+                  </h4>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {selectedDates.sort().map(date => (
+                      <span key={date} className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
+                        {new Date(date).toLocaleDateString()}
+                      </span>
+                    ))}
+                  </div>
+                  <motion.button
+                    onClick={() => onBook(campsite)}
+                    className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg font-medium transition-colors"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    Book Selected Dates - ${campsite.pricing.tent * selectedDates.length}
+                  </motion.button>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {activeTab === 'reviews' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="max-w-4xl mx-auto space-y-6"
+            >
+              {reviews.map((review) => (
+                <div key={review.id} className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <div className="font-semibold text-gray-900">{review.author}</div>
+                      <div className="text-sm text-gray-500">{review.date}</div>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`h-4 w-4 ${i < review.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-gray-700 mb-4">{review.comment}</p>
+                  <div className="flex items-center justify-between text-sm text-gray-500">
+                    <span>{review.helpful} people found this helpful</span>
+                    <button className="text-orange-600 hover:text-orange-700 font-medium">
+                      Helpful
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </motion.div>
+          )}
         </div>
       </div>
     </div>

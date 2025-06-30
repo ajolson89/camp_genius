@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Filter, Grid, List, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
+import { Filter, Grid, List, ArrowLeft, Loader2, AlertCircle, Map } from 'lucide-react';
 import CampsiteCardSimple from '../components/CampsiteCardSimple';
+import CampsiteMap from '../components/CampsiteMap';
 import { Campsite } from '../types';
 
 interface SearchResultsProps {
@@ -24,8 +25,9 @@ const SearchResults: React.FC<SearchResultsProps> = ({
   onBookCampsite 
 }) => {
   const [showFilters, setShowFilters] = useState(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'map'>('grid');
   const [sortBy, setSortBy] = useState('recommended');
+  const [selectedCampsite, setSelectedCampsite] = useState<Campsite | null>(null);
   const [filters, setFilters] = useState({
     priceRange: [0, 200],
     equipmentType: 'all',
@@ -101,6 +103,18 @@ const SearchResults: React.FC<SearchResultsProps> = ({
                 >
                   <List className="h-4 w-4" />
                 </motion.button>
+                <motion.button
+                  onClick={() => setViewMode('map')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                    viewMode === 'map' 
+                      ? 'bg-gradient-to-r from-orange-500 to-yellow-500 text-white shadow-md' 
+                      : 'text-teal-600 hover:text-orange-600 hover:bg-orange-50'
+                  }`}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <Map className="h-4 w-4" />
+                </motion.button>
               </div>
 
               {/* Filter Button */}
@@ -122,7 +136,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({
         <div className="flex gap-8">
           {/* Filter Sidebar */}
           <AnimatePresence>
-            {showFilters && (
+            {showFilters && viewMode !== 'map' && (
               <motion.div
                 initial={{ x: -300, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
@@ -271,31 +285,51 @@ const SearchResults: React.FC<SearchResultsProps> = ({
               </motion.div>
             )}
 
-            {/* Results Grid/List */}
+            {/* Results Grid/List/Map */}
             {!isLoading && (
-              <motion.div
-                layout
-                className={viewMode === 'grid' 
-                  ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8' 
-                  : 'space-y-6'
-                }
-              >
-                {filteredResults.map((campsite, index) => (
+              <>
+                {viewMode === 'map' ? (
                   <motion.div
-                    key={campsite.id}
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: index * 0.1 }}
-                    layout
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="h-[600px]"
                   >
-                    <CampsiteCardSimple
-                      campsite={campsite}
-                      onSelect={onCampsiteSelect}
-                      onBook={onBookCampsite}
+                    <CampsiteMap
+                      campsites={filteredResults}
+                      selectedCampsite={selectedCampsite}
+                      onCampsiteSelect={(campsite) => {
+                        setSelectedCampsite(campsite);
+                        onCampsiteSelect(campsite);
+                      }}
+                      height="600px"
                     />
                   </motion.div>
-                ))}
-              </motion.div>
+                ) : (
+                  <motion.div
+                    layout
+                    className={viewMode === 'grid' 
+                      ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8' 
+                      : 'space-y-6'
+                    }
+                  >
+                    {filteredResults.map((campsite, index) => (
+                      <motion.div
+                        key={campsite.id}
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, delay: index * 0.1 }}
+                        layout
+                      >
+                        <CampsiteCardSimple
+                          campsite={campsite}
+                          onSelect={onCampsiteSelect}
+                          onBook={onBookCampsite}
+                        />
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                )}
+              </>
             )}
 
             {/* No Results */}

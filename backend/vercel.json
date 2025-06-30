@@ -3,14 +3,11 @@
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/api/simple"
+      "destination": "/api/main"
     }
   ],
   "functions": {
-    "api/simple.ts": {
-      "maxDuration": 30
-    },
-    "api/test.ts": {
+    "api/main.ts": {
       "maxDuration": 30
     }
   },
